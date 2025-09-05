@@ -1,6 +1,6 @@
-# SmartZigFileSystem
+# Dwit - SmartZigFileSystem
 
-# ZFileManager - Engineering Learning Journal 📚
+# Engineering Learning Journal 📚
 
 > **Goal:** Build a smart file manager in Zig while documenting the entire learning journey  
 

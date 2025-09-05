@@ -17,7 +17,7 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
 
     const exe = b.addExecutable(.{
-        .name = "Dwit",
+        .name = "dwit",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
@@ -51,3 +51,4 @@ pub fn build(b: *std.Build) void {
         test_step.dependOn(&run_unit_tests.step);
     }
 }
+

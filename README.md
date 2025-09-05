@@ -100,7 +100,7 @@ src/
 **Hypothesis:** Users prefer contextual help over man pages for file operations
 
 **Test Plan:**
-1. Implement `zfm help <command>` pattern
+1. Implement `dwit help <command>` pattern
 2. Add examples to each command
 3. Test with colleagues
 4. Gather feedback

@@ -13,13 +13,9 @@ Building an intelligent file organizer that will eventually help with office doc
 
 ---
 
-## 📖 Learning Log
+## 🛠️ Project Overview
 
-### Day 1 - September 5, 2025
-**Current Status:** Have Zig basics from Ziglings, ready to tackle real project
-
-**Today's Hypothesis:**
-> "Starting with file system operations will give me the best foundation for this project"
+> Starting with file system operations 
 
 **What I need to learn:**
 1. **File System Operations** (Priority 1)
@@ -35,12 +31,11 @@ Building an intelligent file organizer that will eventually help with office doc
    - Memory management for file lists
    - Efficient data structures
 
-**Learning Plan:**
+**Plan:**
 
-Week 1: File Operations & Basic CLI
-Week 2: Data Structures & Memory Management  
-Week 3: Configuration & Error Handling
-Week 4: Integration & Testing
+- 1: File Operations & Basic CLI2
+- 2: Data Structures & Memory Management  
+- 3: Configuration & Error Handling
 
 
 **Questions to explore:**
@@ -116,8 +111,7 @@ src/
 1. Fail fast - stop on first error
 2. Skip and continue - log errors but keep going
 3. Interactive - ask user what to do
-
-**Decision:** Skip and continue (Option 2)  
+ 
 **Reasoning:** Real-world directories often have permission issues. Better to process what we can and report issues at the end.
 
 ```zig
@@ -138,13 +132,6 @@ fn scanDirectory(path: []const u8) !ScanResult {
     return result;
 }
 ```
-
-### Decision 2: Configuration Format
-**Problem:** JSON vs TOML vs custom format?
-
-**Decision:** JSON (for now)  
-**Reasoning:** Zig has built-in JSON support, simpler to start with. Can migrate to TOML later if needed.
-
 ---
 
 ## 🎓 Learning Notes

@@ -56,7 +56,7 @@ fn printUsage() void {
     print("  version             Show version information\n", .{});
     print("  help                Show this help message\n", .{});
     print("\nExamples:\n", .{});
-    print("  {s} scan ./documents\n", .{PROGRAM_NAME});
+    print("  {s} scan ~/Documents\n", .{PROGRAM_NAME});
     print("  {s} list --type=pdf\n", .{PROGRAM_NAME});
     print("  {s} scan ~/Desktop --recursive\n", .{PROGRAM_NAME});
 }

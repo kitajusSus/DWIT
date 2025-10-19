@@ -2,13 +2,12 @@
 
 # Engineering Learning Journal 📚
 
-> **Goal:** Build a smart file manager in Zig while documenting the entire learning journey  
-
+> **Goal:** Build a smart file manager in Zig
 ## ...
 
 Building an intelligent file organizer that will eventually help with office document management - finding companies in contracts, analyzing invoices, visualizing document relationships. But first, we need solid foundations.
 
-> As an intern I've seen how this office/.pdfs tasks can be boring or labourius in terms of taking much time for small reward. 
+> As an intern I've seen how this office/.pdfs tasks can be boring or labourius in terms of taking much time for small reward.
 
 
 ---
@@ -21,7 +20,6 @@ Building an intelligent file organizer that will eventually help with office doc
 **Today's Hypothesis:**
 > "Starting with file system operations will give me the best foundation for this project"
 
-**What I need to learn:**
 1. **File System Operations** (Priority 1)
    - Directory traversal in Zig
    - File metadata extraction
@@ -35,12 +33,7 @@ Building an intelligent file organizer that will eventually help with office doc
    - Memory management for file lists
    - Efficient data structures
 
-**Learning Plan:**
 
-Week 1: File Operations & Basic CLI
-Week 2: Data Structures & Memory Management  
-Week 3: Configuration & Error Handling
-Week 4: Integration & Testing
 
 
 **Questions to explore:**
@@ -117,7 +110,7 @@ src/
 2. Skip and continue - log errors but keep going
 3. Interactive - ask user what to do
 
-**Decision:** Skip and continue (Option 2)  
+**Decision:** Skip and continue (Option 2)
 **Reasoning:** Real-world directories often have permission issues. Better to process what we can and report issues at the end.
 
 ```zig
@@ -125,7 +118,7 @@ src/
 fn scanDirectory(path: []const u8) !ScanResult {
     var result = ScanResult.init();
     var errors = std.ArrayList(FileError).init(allocator);
-    
+
     // Process files, collect errors
     for (files) |file| {
         processFile(file) catch |err| {
@@ -133,7 +126,7 @@ fn scanDirectory(path: []const u8) !ScanResult {
             continue; // Keep going
         };
     }
-    
+
     result.errors = errors.toOwnedSlice();
     return result;
 }
@@ -142,7 +135,7 @@ fn scanDirectory(path: []const u8) !ScanResult {
 ### Decision 2: Configuration Format
 **Problem:** JSON vs TOML vs custom format?
 
-**Decision:** JSON (for now)  
+**Decision:** JSON (for now)
 **Reasoning:** Zig has built-in JSON support, simpler to start with. Can migrate to TOML later if needed.
 
 ---

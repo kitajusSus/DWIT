@@ -1,8 +1,7 @@
 const std = @import("std");
 const print = std.debug.print;
 
-// Version info
-const VERSION = "0.1.2";
+const VERSION = "0.1.3";
 const PROGRAM_NAME = "DWIT";
 
 pub fn main() !void {
@@ -43,48 +42,82 @@ pub fn main() !void {
 
 fn printVersion() void {
     print("{s} v{s} ~kitajusSus \n", .{ PROGRAM_NAME, VERSION });
-    print("Smart File Manager - DWIT - written in Zig {s}\n", .{@import("builtin").zig_version_string});
+    print("Smart File Manager - Dwit - written in Zig {s}\n", .{@import("builtin").zig_version_string});
 }
 
 fn printUsage() void {
     print("Usage: {s} <command> [directory] [options]\n\n", .{PROGRAM_NAME});
     print("Commands:\n", .{});
     print("  scan <directory>    Scan directory and index files\n", .{});
-    print("    --recursive, -r   Scan recursively\n", .{});
+    print("    --recursive, -r   Scan recursively (equivalent to --depth=all)\n", .{});
+    print("    --depth=<num>     Scan to specified depth (e.g., --depth=2; use 'all' for unlimited)\n", .{});
+    print("    --benchmark, -b   Show benchmark (files scanned, time taken)\n", .{});
     print("  list [directory]    List indexed files (defaults to current dir)\n", .{});
     print("    --type=<ext>      Filter by file extension (e.g., --type=pdf)\n", .{});
     print("  version             Show version information\n", .{});
     print("  help                Show this help message\n", .{});
     print("\nExamples:\n", .{});
     print("  {s} scan ~/Documents\n", .{PROGRAM_NAME});
-    print("  {s} scan ~/Desktop --recursive\n", .{PROGRAM_NAME});
+    print("  {s} scan ~/Desktop --depth=2\n", .{PROGRAM_NAME});
+    print("  {s} scan ~/Desktop --recursive --benchmark\n", .{PROGRAM_NAME});
     print("  {s} list ~/Downloads --type=pdf\n", .{PROGRAM_NAME});
 }
 
 fn handleScanCommand(allocator: std.mem.Allocator, args: []const []const u8) !void {
     if (args.len == 0) {
         print("Error: scan command requires a directory path\n", .{});
-        print("Usage: {s} scan <directory> [--recursive]\n", .{PROGRAM_NAME});
+        print("Usage: {s} scan <directory> [--depth=<num>|--recursive] [--benchmark]\n", .{PROGRAM_NAME});
         return;
     }
 
     const directory = args[0];
-    var recursive = false;
+    var depth_str: []const u8 = "0"; // default no recursion
+    var benchmark = false;
 
     for (args[1..]) |arg| {
         if (std.mem.eql(u8, arg, "--recursive") or std.mem.eql(u8, arg, "-r")) {
-            recursive = true;
+            depth_str = "all";
+        } else if (std.mem.startsWith(u8, arg, "--depth=")) {
+            depth_str = arg["--depth=".len..];
+        } else if (std.mem.eql(u8, arg, "--benchmark") or std.mem.eql(u8, arg, "-b")) {
+            benchmark = true;
         }
     }
 
-    print("📁 Scanning directory: {s}\n", .{directory});
-    if (recursive) {
-        print("🔄 Recursive mode enabled\n", .{});
+    var depth: ?u32 = null;
+    if (std.mem.eql(u8, depth_str, "all")) {
+        depth = null; // unlimited
+    } else {
+        depth = std.fmt.parseInt(u32, depth_str, 10) catch {
+            print("Error: Invalid depth value '{s}'. Use a number or 'all'.\n", .{depth_str});
+            return;
+        };
     }
 
-    try basicDirectoryScan(allocator, directory, recursive);
+    print("📁 Scanning directory: {s}\n", .{directory});
+    if (depth == null) {
+        print("🔄 Recursive mode enabled (unlimited depth)\n", .{});
+    } else if (depth.? > 0) {
+        print("🔄 Scanning to depth: {}\n", .{depth.?});
+    }
+    if (benchmark) {
+        print("⏱️  Benchmark mode enabled\n", .{});
+    }
+
+    const start_time = if (benchmark) std.time.nanoTimestamp() else 0;
+    var total_files: u32 = 0;
+
+    try basicDirectoryScan(allocator, directory, depth, benchmark, &total_files);
+
+    if (benchmark) {
+        const end_time = std.time.nanoTimestamp();
+        const elapsed_ns = end_time - start_time;
+        const elapsed_ms = @divFloor(elapsed_ns, 1_000_000);
+        print("\n⏱️  Benchmark: Scanned {} files in {} ms\n", .{ total_files, elapsed_ms });
+    }
 }
 
+// ZMIANA: Poprawiona logika parsowania i usunięty nieużywany `allocator`.
 fn handleListCommand(args: []const []const u8) !void {
     var dir_path: []const u8 = ".";
     var ext: []const u8 = "";
@@ -94,6 +127,7 @@ fn handleListCommand(args: []const []const u8) !void {
         if (std.mem.startsWith(u8, arg, "--type=")) {
             ext = arg["--type=".len..];
         } else if (!std.mem.startsWith(u8, arg, "-") and !dir_path_set) {
+            // Pierwszy argument, który nie jest flagą, to ścieżka.
             dir_path = arg;
             dir_path_set = true;
         }
@@ -134,7 +168,7 @@ fn listing(dir_path: []const u8, ext: []const u8) !void {
     }
 }
 
-fn basicDirectoryScan(allocator: std.mem.Allocator, path: []const u8, recursive: bool) !void {
+fn basicDirectoryScan(allocator: std.mem.Allocator, path: []const u8, depth: ?u32, benchmark: bool, total_files: *u32) !void {
     print("🔍 Scanning: {s}\n", .{path});
 
     var dir = std.fs.openDirAbsolute(path, .{ .iterate = true }) catch |err| {
@@ -151,29 +185,38 @@ fn basicDirectoryScan(allocator: std.mem.Allocator, path: []const u8, recursive:
         switch (entry.kind) {
             .file => {
                 file_count += 1;
-                print("📄 File: {s}\n", .{entry.name});
+                if (!benchmark) {
+                    print("📄 File: {s}\n", .{entry.name});
 
-                if (dir.statFile(entry.name)) |stat| {
-                    print("   Size: {} bytes, Modified: {d}\n", .{ stat.size, stat.mtime });
-                } else |err| {
-                    print("   (Could not get file info: {s})\n", .{@errorName(err)});
+                    if (dir.statFile(entry.name)) |stat| {
+                        print("   Size: {} bytes, Modified: {d}\n", .{ stat.size, stat.mtime });
+                    } else |err| {
+                        print("   (Could not get file info: {s})\n", .{@errorName(err)});
+                    }
                 }
             },
             .directory => {
                 dir_count += 1;
-                print("📁 Directory: {s}\n", .{entry.name});
+                if (!benchmark) {
+                    print("📁 Directory: {s}\n", .{entry.name});
+                }
 
-                if (recursive) {
+                if (depth == null or depth.? > 0) {
+                    const new_depth = if (depth) |d| d - 1 else null;
                     const subdir_path = try std.fs.path.join(allocator, &[_][]const u8{ path, entry.name });
                     defer allocator.free(subdir_path);
-                    try basicDirectoryScan(allocator, subdir_path, recursive);
+                    try basicDirectoryScan(allocator, subdir_path, new_depth, benchmark, total_files);
                 }
             },
             else => {},
         }
     }
 
-    print("✅ Scan of '{s}' complete: {} files, {} directories\n", .{ path, file_count, dir_count });
+    total_files.* += file_count;
+
+    if (!benchmark) {
+        print("✅ Scan of '{s}' complete: {} files, {} directories\n", .{ path, file_count, dir_count });
+    }
 }
 
 test "basic functionality" {
@@ -181,3 +224,4 @@ test "basic functionality" {
     try testing.expect(std.mem.eql(u8, PROGRAM_NAME, "DWIT"));
     try testing.expect(std.mem.eql(u8, VERSION, "0.1.2"));
 }
+

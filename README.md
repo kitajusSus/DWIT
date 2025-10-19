@@ -1,7 +1,15 @@
 # Dwit - SmartZigFileSystem
+Actual state
 
-# Engineering Learning Journal 📚
+```bash
+⏱️  Benchmark: Scanned 447181 files in 5029 ms
 
+```
+
+
+
+
+# Engineering
 > **Goal:** Build a smart file manager in Zig
 ## ...
 
@@ -17,7 +25,6 @@ Building an intelligent file organizer that will eventually help with office doc
 ### Day 1 - September 5, 2025
 **Current Status:** Have Zig basics from Ziglings, ready to tackle real project
 
-**Today's Hypothesis:**
 > "Starting with file system operations will give me the best foundation for this project"
 
 1. **File System Operations** (Priority 1)
@@ -76,29 +83,6 @@ src/
 
 ---
 
-## 🧪 Experiments & Hypotheses
-
-### Experiment 1: Directory Scanning Performance
-**Hypothesis:** Using `std.fs.Dir.iterate()` will be faster than recursive function calls for large directories
-
-**Test Plan:**
-1. Create test directory with 10k files
-2. Implement both approaches
-3. Benchmark performance
-4. Measure memory usage
-
-**Expected Outcome:** Iterator should be more memory-efficient
-
-### Experiment 2: CLI User Experience
-**Hypothesis:** Users prefer contextual help over man pages for file operations
-
-**Test Plan:**
-1. Implement `dwit help <command>` pattern
-2. Add examples to each command
-3. Test with colleagues
-4. Gather feedback
-
----
 
 ## 💡 Design Decisions
 
@@ -114,7 +98,6 @@ src/
 **Reasoning:** Real-world directories often have permission issues. Better to process what we can and report issues at the end.
 
 ```zig
-// Pattern to implement:
 fn scanDirectory(path: []const u8) !ScanResult {
     var result = ScanResult.init();
     var errors = std.ArrayList(FileError).init(allocator);
@@ -153,10 +136,8 @@ var iterator = dir.iterate();
 while (try iterator.next()) |entry| {
     switch (entry.kind) {
         .directory => {
-            // Recursive call or add to queue
         },
         .file => {
-            // Process file
             const file_info = try getFileInfo(entry.name);
         },
         else => continue, // Skip symlinks, etc.
@@ -204,7 +185,7 @@ fn getFileName(allocator: Allocator, path: []const u8) ![]const u8 {
 
 **In Progress:**
 - [ ] Setting up development environment
-- [ ] Implementing basic file scanner
+- [x] Implementing basic file scanner
 
 **Next Steps:**
 1. Create basic project structure
@@ -236,7 +217,7 @@ fn getFileName(allocator: Allocator, path: []const u8) ![]const u8 {
 - [uv](https://github.com/astral-sh/uv) - Modern CLI tool design
 
 **Learning Materials:**
-- Ziglings exercises (completed ✓ mostly)
+- Ziglings exercises (completed ✓ )
 - Zig Language Docs (www.zigland.com)
 - "Zig in 100seconds" I just Love this guy
 
@@ -245,9 +226,9 @@ fn getFileName(allocator: Allocator, path: []const u8) ![]const u8 {
 ## 🎯 Success Metrics
 
 **Short-term (1 month):**
-- [ ] Can scan 10k+ files without crashing
-- [ ] CLI feels intuitive to use
-- [ ] Code is well-structured and documented
+- [x] Can scan 10k+ files without crashing
+- [-] CLI feels intuitive to use
+- [-] Code is well-structured and documented
 
 **Medium-term (3 months):**
 - [ ] Handles edge cases gracefully

@@ -87,11 +87,11 @@ pub fn load(allocator: std.mem.Allocator) !Graph {
     const num_tags = try reader.takeInt(u32, .little);
     for (0..num_tags) |_| {
         const name_len = try reader.takeInt(u32, .little);
-        const name = try allocator.alloc(u8, name_len);
+        const name = try allocator.alloc(u32, name_len);
         try reader.readSliceAll(name);
 
         const num_hashes = try reader.takeInt(u32, .little);
-        var hashes: std.ArrayList([32]u8) = .empty;
+        var hashes: std.ArrayList([32]u32) = .empty;
         errdefer hashes.deinit(allocator);
 
         try hashes.ensureTotalCapacity(allocator, num_hashes);

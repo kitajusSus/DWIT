@@ -224,4 +224,3 @@ test "basic functionality" {
     try testing.expect(std.mem.eql(u8, PROGRAM_NAME, "DWIT"));
     try testing.expect(std.mem.eql(u8, VERSION, "0.1.2"));
 }
-

@@ -1,5 +1,7 @@
 # Dwit - SmartZigFileSystem
-Actual state
+`dwit` is a file management and knowledge-base tool.
+It scans files, identifies them by their content hash,
+and allows you to create relationships (tags and links) between them.
 
 ```bash
 ⏱️  Benchmark: Scanned 447181 files in 5029 ms
@@ -17,12 +19,170 @@ zig build -Drelease-fast=true
 sudo cp zig-out/bin/dwit /usr/local/bin/
 
 
-dwit scan
-dwit list
-dwit tag ...
+dwit <command> [options]
+dwit tag <file_path> <tag1> [tag2] ...
+dwit scan <directory_path>
+dwit list [--type <extension>]
+dwit link <source_file> <target_file>
+dwit find --tag <tag_name>
+```
+
+**Working on on project commands**
+```bash
+# if you are testing if from source add `zig build --` before every commands
+# (forgot `dwit`)
+
+#for cleaning you db
+rm dwit.db 2>/dev/null
+# When running from the source directory
+zig build run -- <command> [options]
+zig build run -- scan .
+zig build run -- list --type pdf
+
+
+
+## if you use arch install needed package
+sudo pacman -Syu graphviz
+zig build run -- export-graph > graph.dot
+# and use graphviz on it
+dot -Tpng graph.dot -o graph.png
+
+
 
 ```
 
+
+-----
+
+<details>
+<summary>Commands Details</summary>
+
+
+
+## Commands
+
+### `scan`
+
+Scans a directory and builds/updates the file database.
+
+```bash
+dwit scan <directory_path>
+```
+
+**Description:**
+Recursively scans the given directory (e.g., `.`). It hashes every file found and saves its hash and path to the `dwit.db` database.
+
+The scanner automatically ignores common cache/VCS directories, such as:
+
+  * `.git`
+  * `.zig-cache`
+  * `zig-out`
+  * `node_modules`
+
+Upon completion, it prints a summary of the total files scanned and the time taken.
+
+-----
+
+### `list`
+
+Lists all files known to the database.
+
+```bash
+dwit list [--type <extension>]
+```
+
+**Description:**
+Prints a list of all file paths stored in `dwit.db`.
+
+**Options:**
+
+  * `--type <extension>`: (Optional) Filters the list to show only files with the specified extension (e.g., `pdf` or `.pdf`).
+
+-----
+
+### `tag`
+
+Adds one or more tags to a file.
+
+```bash
+dwit tag <file_path> <tag1> [tag2] ...
+```
+
+**Description:**
+Associates one or more string tags with the file specified by `<file_path>`. The file must already exist in the database (run `scan` first).
+
+-----
+
+### `link`
+
+Creates a directed link between two files.
+
+```bash
+dwit link <source_file> <target_file>
+```
+
+**Description:**
+Creates a directional relationship *from* the `<source_file>` *to* the `<target_file>`. Both files must be known to the database.
+
+-----
+
+### `info`
+
+Displays detailed information about a single file.
+
+```bash
+dwit info <file_path>
+```
+
+**Description:**
+Provides a complete summary for the specified file, including:
+
+  * The file's unique content hash.
+  * A list of all tags associated with the file.
+  * A list of all links, showing both outgoing (`->`) and incoming (`<-`) relationships.
+
+-----
+
+### `find`
+
+Finds all files associated with a specific tag.
+
+```bash
+dwit find --tag <tag_name>
+```
+
+**Description:**
+Searches the database and prints a list of all files that have been marked with the specified `<tag_name>`.
+
+-----
+
+### `export-graph`
+
+Exports the entire database structure as a `.dot` graph.
+
+```bash
+dwit export-graph
+```
+
+**Description:**
+Prints a graph definition in the DOT language (for use with Graphviz) to standard output. In this graph:
+
+  * **Nodes** are the unique file hashes.
+  * **Node Labels** are the human-readable file paths.
+  * **Edges** represent the links created with the `link` command.
+
+**Example (Visualizing the graph):**
+
+```bash
+# 1. Export the graph to a file
+dwit export-graph > my_graph.dot
+
+# 2. Use Graphviz (dot) to render it as an image
+dot -Tpng my_graph.dot -o my_graph.png
+```
+
+
+</details>
 
 
 # Engineering
@@ -160,6 +320,36 @@ fn scanDirectory(path: []const u8) !ScanResult {
 **Reasoning:** Zig has built-in JSON support, simpler to start with. Can migrate to TOML later if needed.
 
 ---
+
+### Decision 3: Performance Optimization Strategies
+
+#### 1. Multithreading
+- [ ] Looking for info
+Instead of processing files sequentially (one by one), utilize a thread pool
+(e.g., 4 or 8 threads). This allows the application to perform tasks in parallel.
+
+For example, while one thread is blocked waiting for a disk read (I/O-bound),
+another thread can be actively processing data in the CPU (CPU-bound), and a third
+can be writing metadata to the database. This parallel execution is the most important
+optimization for this type of mixed I/O and CPU workload, ensuring that
+system resources are used efficiently.
+
+#### 2. Asynchronous I/O (Async I/O)
+- [ ]  Looking for info
+
+Async I/O is a more advanced paradigm that complements multithreading.
+It allows your program to initiate many operations at once without waiting for each one to finish.
+
+Instead of a thread blocking (idling) while waiting for a file read,
+the program can "request" the operating system to read 100 files simultaneously.
+
+The program is then free to perform other work. As each file read is completed,
+the operating system notifies the program, which can then process the ready data.
+This model prevents threads from being wasted on waiting and is highly effective at maximizing throughput,
+especially with fast storage devices (SSDs).
+
+
+
 
 ## 🎓 Learning Notes
 

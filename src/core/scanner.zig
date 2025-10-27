@@ -1,9 +1,9 @@
 const std = @import("std");
-const core = @import("..");
-
+const database = @import("database.zig");
+const hashing = @import("hashing.zig");
 fn traverseDir(
     allocator: std.mem.Allocator,
-    graph: *core.database.Graph,
+    graph: *database.Graph,
     dir_path: []const u8,
 ) !void {
     // use .iterate = true, to get iterator of the actual directory
@@ -24,7 +24,7 @@ fn traverseDir(
                 try traverseDir(allocator, graph, entry_path);
             },
             .file => {
-                const hash = core.hashing.hashFile(entry_path) catch |err| {
+                const hash = hashing.hashFile(entry_path) catch |err| {
                     std.debug.print("Cannot calculate SHA256 for file: {s}: {s}\n", .{ entry_path, @errorName(err) });
                     continue;
                 };
@@ -38,7 +38,7 @@ fn traverseDir(
                     allocator.free(gop.value_ptr.path);
                 }
                 gop.value_ptr.* = .{ .path = owned_path };
-                std.debug.print("Zeskanowano: {s}\n", .{entry_path});
+                std.debug.print("Already Scanned: {s}\n", .{entry_path});
             },
             else => {
                 continue;
@@ -48,12 +48,12 @@ fn traverseDir(
 }
 
 pub fn scanDirectory(allocator: std.mem.Allocator, dir_path: []const u8) !void {
-    var graph = try core.database.load(allocator);
+    var graph = try database.load(allocator);
     defer graph.deinit();
 
     std.debug.print("Starting sCaNnIng: {s}\n", .{dir_path});
     try traverseDir(allocator, &graph, dir_path);
 
-    try core.database.save(&graph);
+    try database.save(&graph);
     std.debug.print("Scanning ended, database saved.\n", .{});
 }

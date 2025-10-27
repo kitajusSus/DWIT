@@ -3,7 +3,7 @@ const std = @import("std");
 pub const database = @import("core/database.zig");
 pub const hashing = @import("core/hashing.zig");
 pub const types = @import("core/types.zig");
-pub const scanner = @import("core/scanner.zig"); // DODANE: Eksportujemy nowy moduł
+pub const scanner = @import("core/scanner.zig");
 
 pub fn tagFile(allocator: std.mem.Allocator, file_path: []const u8, tags: []const []const u8) !void {
     var graph = try database.load(allocator);
@@ -67,10 +67,11 @@ test "tag file" {
     var graph = try database.load(allocator);
     defer graph.deinit();
 
-    try std.testing.expectEqual(@as(usize, 1), graph.nodes.items.len);
+    try std.testing.expectEqual(@as(usize, 1), graph.nodes.count());
 
     const hash = try hashing.hashFile(file_name);
-    try std.testing.expectEqualSlices(u8, &hash, &graph.nodes.items[0].hash);
+    const node = graph.nodes.get(hash).?;
+    try std.testing.expectEqualSlices(u8, file_name, node.path);
 
     try std.testing.expectEqual(@as(usize, 2), graph.tags.count());
 

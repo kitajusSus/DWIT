@@ -1,3 +1,4 @@
 dwit.db
+graph.dot
 zig-out/
 .zig-cache/

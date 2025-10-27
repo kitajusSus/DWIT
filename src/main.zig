@@ -2,7 +2,6 @@ const std = @import("std");
 // (database, hashing, scanner, etc.) from lib.zig.
 const core = @import("core");
 
-/// Defines all available top-level commands for the CLI.
 /// Using an enum allows for easy parsing and dispatch.
 const Commands = enum {
     scan, // New: Recursively scan a directory to build the file database
@@ -13,7 +12,6 @@ const Commands = enum {
     find,
     @"export-graph", // The '@' symbol allows using a string that might be a keyword
 };
-
 /// The main entry point of the application.
 pub fn main() !void {
     // Set up a General Purpose Allocator.

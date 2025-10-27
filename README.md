@@ -7,6 +7,22 @@ Actual state
 ```
 
 
+### BUILDING FROM SOURCE
+
+```bash
+git clone https://www.github.com/kitajusSus/DWIT.git
+cd DWIT
+zig build -Drelease-fast=true
+
+sudo cp zig-out/bin/dwit /usr/local/bin/
+
+
+dwit scan
+dwit list
+dwit tag ...
+
+```
+
 
 
 # Engineering
@@ -23,7 +39,6 @@ finding companies in contracts, analyzing invoices, visualizing document relatio
 
 ## 📖 Learning Log
 
-### Day 1 - September 5, 2025
 **Current Status:** Have Zig basics from Ziglings, ready to tackle real project
 
 > "Starting with file system operations will give me the best foundation for this project"
@@ -49,14 +64,40 @@ finding companies in contracts, analyzing invoices, visualizing document relatio
 - What's the best pattern for CLI commands in Zig?
 - How to handle permissions errors gracefully?
 
+**How to create custom config for every user?**
+Config it's needed to create struct of slices for skiping the scans:
+
+- defaults
+- reading json?
+- creating .gitignore?
+- adding full scan with this ignored_dirs
+- adding -b for benchmark and check how does it perform, if Does not get worse leave it
+
 ---
 
 ## 🏗️ Architecture Evolution
+Tests:
+
+```bash
+# clean old database if exists
+rm dwit.db 2>/dev/null
+
+# create test files
+echo "note about ZIG" > note.txt
+echo "PDF FILE ABOUT SKIBIDI TOILET" > memo.pdf
+mkdir -p projects
+echo "README" > projects/readme.md
+```
+
+
+
+
 
 ### Phase 1: MVP Smart File Manager
 ```
 dwit scan ./documents          # Scan directory
 dwit list --type=pdf          # Filter by type
+dwit list    # show every file from database
 dwit search "contract"        # Simple text search
 ```
 
@@ -224,8 +265,8 @@ fn getFileName(allocator: Allocator, path: []const u8) ![]const u8 {
 
 **Short-term (1 month):**
 - [x] Can scan 10k+ files without crashing
-- [-] CLI feels intuitive to use
-- [-] Code is well-structured and documented
+- [ ] CLI feels intuitive to use
+- [ ] Code is well-structured and documented
 
 **Medium-term (3 months):**
 - [ ] Handles edge cases gracefully

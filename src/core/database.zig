@@ -5,21 +5,30 @@ pub const DB_FILE_PATH = "dwit.db";
 
 pub const Graph = struct {
     allocator: std.mem.Allocator,
-    nodes: std.ArrayList(types.FileNode),
+    // dont get notes as a list,
+    // get  this as HashMap
+    //  Key: [32]u8 (file of Hash)
+    //  Value: types.FileNode (which owns path)
+    nodes: std.HashMap([32]u8, types.FileNode),
     tags: std.StringHashMap(std.ArrayList([32]u8)),
     links: std.ArrayList(types.Link),
 
     pub fn init(allocator: std.mem.Allocator) Graph {
         return .{
             .allocator = allocator,
-            .nodes = .empty,
+            .nodes = std.HashMap([32]u8, types.FileNode).init(allocator),
             .tags = std.StringHashMap(std.ArrayList([32]u8)).init(allocator),
             .links = .empty,
         };
     }
 
     pub fn deinit(self: *Graph) void {
-        self.nodes.deinit(self.allocator);
+        var node_it = self.nodes.iterator();
+        while (node_it.next()) |entry| {
+            self.allocator.free(entry.value_ptr.path);
+        }
+        self.nodes.deinit();
+
         var it = self.tags.iterator();
         while (it.next()) |entry| {
             entry.value_ptr.deinit(self.allocator);
@@ -37,9 +46,12 @@ pub fn save(graph: *const Graph) !void {
     var file_writer = file.writer(&buffer);
     const writer = &file_writer.interface;
 
-    try writer.writeInt(u32, @intCast(graph.nodes.items.len), .little);
-    for (graph.nodes.items) |node| {
-        try writer.writeAll(&node.hash);
+    try writer.writeInt(u32, @intCast(graph.nodes.count()), .little);
+    var node_it = graph.nodes.iterator();
+    while (node_it.next()) |entry| {
+        try writer.writeAll(entry.key_ptr.*); // Klucz (Hash)
+        try writer.writeInt(u32, @intCast(entry.value_ptr.path.len), .little);
+        try writer.writeAll(entry.value_ptr.path);
     }
 
     try writer.writeInt(u32, @intCast(graph.tags.count()), .little);
@@ -77,25 +89,30 @@ pub fn load(allocator: std.mem.Allocator) !Graph {
     const reader = &file_reader.interface;
 
     const num_nodes = try reader.takeInt(u32, .little);
-    try graph.nodes.ensureTotalCapacity(allocator, num_nodes);
     for (0..num_nodes) |_| {
-        var node: types.FileNode = undefined;
-        try reader.readSliceAll(&node.hash);
-        try graph.nodes.append(allocator, node);
+        var hash: [32]u8 = undefined;
+        try reader.readSliceAll(&hash); // Wczytaj klucz (hash)
+
+        const path_len = try reader.takeInt(u32, .little);
+        const path = try allocator.alloc(u8, path_len);
+        errdefer allocator.free(path); // Obsługa błędu podczas wczytywania
+        try reader.readSliceAll(path);
+
+        const node = types.FileNode{ .path = path };
+        try graph.nodes.put(hash, node); // Wstaw do mapy
     }
 
     const num_tags = try reader.takeInt(u32, .little);
     for (0..num_tags) |_| {
         const name_len = try reader.takeInt(u32, .little);
-        const name = try allocator.alloc(u32, name_len);
+        const name = try allocator.alloc(u8, name_len);
         try reader.readSliceAll(name);
 
         const num_hashes = try reader.takeInt(u32, .little);
-        var hashes: std.ArrayList([32]u32) = .empty;
+        var hashes: std.ArrayList([32]u8) = .empty;
         errdefer hashes.deinit(allocator);
 
         try hashes.ensureTotalCapacity(allocator, num_hashes);
-
         for (0..num_hashes) |_| {
             var hash: [32]u8 = undefined;
             try reader.readSliceAll(&hash);
@@ -103,12 +120,9 @@ pub fn load(allocator: std.mem.Allocator) !Graph {
         }
 
         // TODO: Fix memory leak.
-        // The `name` slice is being leaked when the key already exists in the
-        // hash map. The `getOrPut` function takes ownership of the key, but
-        // only if it's a new key. If the key already exists, the new key is
-        // not inserted, and the memory is leaked.
         const gop = try graph.tags.getOrPut(name);
         if (gop.found_existing) {
+            allocator.free(name); // <-- fast fix grey tape type!
             gop.value_ptr.deinit(allocator);
         }
         gop.value_ptr.* = hashes;

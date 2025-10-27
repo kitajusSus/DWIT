@@ -1,8 +1,7 @@
 const std = @import("std");
 
 pub const FileNode = struct {
-    hash: [32]u8,
-    // Other metadata can be added here, e.g., last_seen: i64
+    path: []u8,
 };
 
 pub const Tag = struct {

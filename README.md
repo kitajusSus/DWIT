@@ -13,7 +13,8 @@ Actual state
 > **Goal:** Build a smart file manager in Zig
 ## ...
 
-Building an intelligent file organizer that will eventually help with office document management - finding companies in contracts, analyzing invoices, visualizing document relationships. But first, we need solid foundations.
+Building an intelligent file organizer that will eventually help with office document management -
+finding companies in contracts, analyzing invoices, visualizing document relationships.
 
 > As an intern I've seen how this office/.pdfs tasks can be boring or labourius in terms of taking much time for small reward.
 
@@ -57,22 +58,18 @@ Building an intelligent file organizer that will eventually help with office doc
 dwit scan ./documents          # Scan directory
 dwit list --type=pdf          # Filter by type
 dwit search "contract"        # Simple text search
-dwit move *.pdf ./contracts   # Organize files
 ```
 
 **Core Components:**
 ```
 src/
 ├── core/
-│   ├── file_scanner.zig     # Directory traversal
-│   ├── file_info.zig        # Metadata extraction
-│   └── file_operations.zig  # Move, copy, delete
-├── cli/
-│   ├── commands.zig         # Command dispatch
-│   └── args.zig             # Argument parsing
-├── config/
-│   └── config.zig           # Configuration system
-└── main.zig                 # Entry point
+│   ├── database.zig
+│   ├── hashing.zig
+│   └── types.zig
+├── main.zig                 # Entry point
+
+├── lib.zig
 ```
 
 ### Phase 2: Document Intelligence (Future)

@@ -3,6 +3,7 @@ const std = @import("std");
 pub const database = @import("core/database.zig");
 pub const hashing = @import("core/hashing.zig");
 pub const types = @import("core/types.zig");
+pub const scanner = @import("core/scanner.zig"); // DODANE: Eksportujemy nowy moduł
 
 pub fn tagFile(allocator: std.mem.Allocator, file_path: []const u8, tags: []const []const u8) !void {
     var graph = try database.load(allocator);
@@ -10,26 +11,22 @@ pub fn tagFile(allocator: std.mem.Allocator, file_path: []const u8, tags: []cons
 
     const hash = try hashing.hashFile(file_path);
 
-    // Find or create the node for this file
-    var node_index: ?usize = null;
-    for (graph.nodes.items, 0..) |node, i| {
-        if (std.mem.eql(u8, &node.hash, &hash)) {
-            node_index = i;
-            break;
-        }
+    // Change: HashMap of nodes
+    // Checks if the node exist
+    if (graph.nodes.get(hash) == null) {
+        // if not create new
+        const path_owned = try allocator.dupe(u8, file_path);
+        errdefer allocator.free(path_owned);
+
+        try graph.nodes.put(hash, .{ .path = path_owned });
     }
 
-    if (node_index == null) {
-        try graph.nodes.append(allocator, .{ .hash = hash });
-    }
-
-    // Add tags
     for (tags) |tag| {
         const gop = try graph.tags.getOrPut(tag);
         if (!gop.found_existing) {
             gop.value_ptr.* = .empty;
         }
-        // TODO: Avoid adding duplicate hashes to the tag list
+        // TODO: dont duplicate
         try gop.value_ptr.append(allocator, hash);
     }
 

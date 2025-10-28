@@ -335,6 +335,7 @@ fn scanDirectory(path: []const u8) !ScanResult {
 
 #### 1. Multithreading
 - [ ] Looking for info
+
 Instead of processing files sequentially (one by one), utilize a thread pool
 (e.g., 4 or 8 threads). This allows the application to perform tasks in parallel.
 

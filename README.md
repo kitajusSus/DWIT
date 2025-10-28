@@ -14,8 +14,7 @@ and allows you to create relationships (tags and links) between them.
 ```bash
 git clone https://www.github.com/kitajusSus/DWIT.git
 cd DWIT
-zig build -Drelease-fast=true
-
+zig build -Doptimize=ReleaseFast
 sudo cp zig-out/bin/dwit /usr/local/bin/
 
 
@@ -232,7 +231,7 @@ Config it's needed to create struct of slices for skiping the scans:
 - creating .gitignore?
 - adding full scan with this ignored_dirs
 - adding -b for benchmark and check how does it perform, if Does not get worse leave it
-
+-
 ---
 
 ## 🏗️ Architecture Evolution
@@ -254,6 +253,8 @@ echo "README" > projects/readme.md
 
 
 ### Phase 1: MVP Smart File Manager
+- [x] already did commands
+
 ```
 dwit scan ./documents          # Scan directory
 dwit list --type=pdf          # Filter by type
@@ -274,10 +275,19 @@ src/
 ```
 
 ### Phase 2: Document Intelligence (Future)
-- OCR integration for scanned documents
-- Entity extraction (company names, NIPs, amounts)
-- Document relationship graphs
-- Business intelligence features
+- [ ] now trying to do phase 2
+- [ ] OCR integration for scanned documents
+- [ ] Entity extraction (company names, NIPs, amounts)
+- [ ] Document relationship graphs
+- [ ] Business intelligence features
+
+### Phase 3: Better Bigger Stronger
+
+- [ ] shows only file names and not path
+- [ ] makes auto-tags based on config
+- [ ] works on explorer/web
+
+
 
 ---
 

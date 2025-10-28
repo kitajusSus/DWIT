@@ -30,10 +30,12 @@ pub fn main() !void {
             std.debug.print("memory leak!\n", .{});
         }
     }
+    var stdout_buffer: [4096]u8 = undefined;
+    var stdout = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout_writer = &stdout.interface;
 
-    // Allocate and retrieve command-line arguments.
+    defer stdout_writer.flush() catch {};
     const args_const = try std.process.argsAlloc(allocator);
-    // Free the argument memory when main exits.
     defer std.process.argsFree(allocator, args_const);
 
     // Copy the const arguments into an ArrayList.
@@ -64,12 +66,12 @@ pub fn main() !void {
     // It routes execution to the correct handler function based on the enum.
     switch (command) {
         .scan => try handleScanCommand(allocator, args),
-        .list => try handleListCommand(allocator, args),
+        .list => try handleListCommand(allocator, args, stdout_writer),
         .tag => try handleTagCommand(allocator, args),
         .link => try handleLinkCommand(allocator, args),
-        .info => try handleInfoCommand(allocator, args),
-        .find => try handleFindCommand(allocator, args),
-        .@"export-graph" => try handleExportGraphCommand(allocator),
+        .info => try handleInfoCommand(allocator, args, stdout_writer),
+        .find => try handleFindCommand(allocator, args, stdout_writer),
+        .@"export-graph" => try handleExportGraphCommand(allocator, stdout_writer),
     }
 }
 
@@ -87,7 +89,11 @@ fn handleScanCommand(allocator: std.mem.Allocator, args: [][]const u8) !void {
 /// Handles the 'list' command.
 /// Usage: dwit list
 ///        dwit list --type <extension>
-fn handleListCommand(allocator: std.mem.Allocator, args: [][]const u8) !void {
+fn handleListCommand(
+    allocator: std.mem.Allocator,
+    args: [][]const u8,
+    stdout: *std.Io.Writer,
+) !void {
     var filter_ext: ?[]const u8 = null;
 
     // Parse optional filter arguments
@@ -111,7 +117,7 @@ fn handleListCommand(allocator: std.mem.Allocator, args: [][]const u8) !void {
     var graph = try core.database.load(allocator);
     defer graph.deinit();
 
-    std.debug.print("Known files:\n", .{});
+    try stdout.print("Known files:\n", .{});
     var it = graph.nodes.iterator();
     while (it.next()) |entry| {
         // entry.value_ptr is the FileNode struct, which contains the path.
@@ -120,11 +126,11 @@ fn handleListCommand(allocator: std.mem.Allocator, args: [][]const u8) !void {
         if (filter_ext) |ext| {
             // If a filter is active, check the file extension.
             if (std.mem.eql(u8, std.fs.path.extension(path), ext)) {
-                std.debug.print("  - {s}\n", .{path});
+                try stdout.print("  - {s}\n", .{path});
             }
         } else {
             // No filter, print all paths.
-            std.debug.print("  - {s}\n", .{path});
+            try stdout.print("  - {s}\n", .{path});
         }
     }
 }
@@ -158,7 +164,11 @@ fn handleLinkCommand(allocator: std.mem.Allocator, args: [][]const u8) !void {
 /// Handles the 'info' command.
 /// Usage: dwit info <file_path>
 /// This function now correctly looks up paths from hashes.
-fn handleInfoCommand(allocator: std.mem.Allocator, args: [][]const u8) !void {
+fn handleInfoCommand(
+    allocator: std.mem.Allocator,
+    args: [][]const u8,
+    stdout: *std.Io.Writer,
+) !void {
     if (args.len != 3) {
         std.debug.print("Usage: dwit info <file_path>\n", .{});
         return error.InvalidArguments;
@@ -168,45 +178,45 @@ fn handleInfoCommand(allocator: std.mem.Allocator, args: [][]const u8) !void {
     defer graph.deinit();
 
     const hash = try core.hashing.hashFile(file_path);
-    std.debug.print("File: {s}\nHash: ", .{file_path});
+    try stdout.print("File: {s}\nHash: ", .{file_path});
     for (hash) |byte| {
-        std.debug.print("{x:02}", .{byte});
+        try stdout.print("{x:02}", .{byte});
     }
-    std.debug.print("\n", .{});
+    try stdout.print("\n", .{});
 
     // --- Find Tags ---
-    std.debug.print("Tags:\n", .{});
+    try stdout.print("Tags:\n", .{});
     var it = graph.tags.iterator();
     while (it.next()) |entry| {
         // entry.value_ptr is the ArrayList of hashes for this tag
         for (entry.value_ptr.items) |h| {
             if (std.mem.eql(u8, &h, &hash)) {
                 // entry.key_ptr.* is the tag name (string)
-                std.debug.print("  - {s}\n", .{entry.key_ptr.*});
+                try stdout.print("  - {s}\n", .{entry.key_ptr.*});
                 break; // Found it, move to the next tag
             }
         }
     }
 
     // --- Find Links ---
-    std.debug.print("Links:\n", .{});
+    try stdout.print("Links:\n", .{});
     for (graph.links.items) |link| {
         // Check for outgoing links
         if (std.mem.eql(u8, &link.source_hash, &hash)) {
             // We have the target_hash, now find its path in the nodes map.
             if (graph.nodes.get(link.target_hash)) |node| {
-                std.debug.print("  -> {s}\n", .{node.path});
+                try stdout.print("  -> {s}\n", .{node.path});
             } else {
-                std.debug.print("  -> [Unknown file hash]\n", .{});
+                try stdout.print("  -> [Unknown file hash]\n", .{});
             }
         }
         // Check for incoming links
         if (std.mem.eql(u8, &link.target_hash, &hash)) {
             // We have the source_hash, find its path.
             if (graph.nodes.get(link.source_hash)) |node| {
-                std.debug.print("  <- {s}\n", .{node.path});
+                try stdout.print("  <- {s}\n", .{node.path});
             } else {
-                std.debug.print("  <- [Unknown file hash]\n", .{});
+                try stdout.print("  <- [Unknown file hash]\n", .{});
             }
         }
     }
@@ -215,7 +225,11 @@ fn handleInfoCommand(allocator: std.mem.Allocator, args: [][]const u8) !void {
 /// Handles the 'find' command.
 /// Usage: dwit find --tag <tag_name>
 /// This function now correctly looks up paths from hashes.
-fn handleFindCommand(allocator: std.mem.Allocator, args: [][]const u8) !void {
+fn handleFindCommand(
+    allocator: std.mem.Allocator,
+    args: [][]const u8,
+    stdout: *std.Io.Writer,
+) !void {
     if (args.len != 4 or !std.mem.eql(u8, args[2], "--tag")) {
         std.debug.print("Usage: dwit find --tag <tag_name>\n", .{});
         return error.InvalidArguments;
@@ -227,58 +241,55 @@ fn handleFindCommand(allocator: std.mem.Allocator, args: [][]const u8) !void {
     // Look up the tag in the tags HashMap
     if (graph.tags.get(tag)) |hashes| {
         // 'hashes' is an ArrayList of file hashes
-        std.debug.print("Files with tag '{s}':\n", .{tag});
+        try stdout.print("Files with tag '{s}':\n", .{tag});
         for (hashes.items) |hash| {
             // For each hash, find the corresponding file path in the nodes map
             if (graph.nodes.get(hash)) |node| {
-                std.debug.print("  - {s}\n", .{node.path});
+                try stdout.print("  - {s}\n", .{node.path});
             } else {
                 // This case can happen if a file was tagged and then deleted
                 // before the next 'scan'.
-                std.debug.print("  - [Path not found for known hash]\n", .{});
+                try stdout.print("  - [Path not found for known hash]\n", .{});
             }
         }
     } else {
-        std.debug.print("No files found with tag: {s}\n", .{tag});
+        try stdout.print("No files found with tag: {s}\n", .{tag});
     }
 }
 
 /// Handles the 'export-graph' command.
 /// Usage: dwit export-graph
 /// This now prints a .dot file with file paths as labels for readability.
-fn handleExportGraphCommand(allocator: std.mem.Allocator) !void {
-    // _ = allocator; // Allocator isn't used here, but part of the signature
+fn handleExportGraphCommand(
+    allocator: std.mem.Allocator,
+    stdout: *std.Io.Writer,
+) !void {
     var graph = try core.database.load(allocator);
     defer graph.deinit();
 
-    // Start the graphviz 'dot' language output
-    std.debug.print("digraph dwit {{\n", .{});
-    std.debug.print("  node [shape=box, style=filled, fillcolor=lightgray];\n", .{});
+    try stdout.print("digraph dwit {{\n", .{});
+    try stdout.print("  node [shape=box, style=filled, fillcolor=lightgray];\n", .{});
 
-    // 1. Define all nodes with their paths as labels
     var node_it = graph.nodes.iterator();
     while (node_it.next()) |entry| {
-        // entry.key_ptr.* is the hash (the node's unique ID)
-        // entry.value_ptr.path is the file path (the node's readable label)
-        std.debug.print("  \"", .{});
+        try stdout.print("  \"", .{});
         for (entry.key_ptr.*) |byte| {
-            std.debug.print("{x:02}", .{byte});
+            try stdout.print("{x:02}", .{byte});
         }
-        // Use the path as the human-readable label
-        std.debug.print("\" [label=\"{s}\"];\n", .{entry.value_ptr.path});
+        try stdout.print("\" [label=\"{s}\"];\n", .{entry.value_ptr.path});
     }
 
-    // 2. Define all links (edges) between nodes
     for (graph.links.items) |link| {
-        std.debug.print("  \"", .{});
+        try stdout.print("  \"", .{});
         for (link.source_hash) |byte| {
-            std.debug.print("{x:02}", .{byte});
+            try stdout.print("{x:02}", .{byte});
         }
-        std.debug.print("\" -> \"", .{});
+        try stdout.print("\" -> \"", .{});
         for (link.target_hash) |byte| {
-            std.debug.print("{x:02}", .{byte});
+            try stdout.print("{x:02}", .{byte});
         }
-        std.debug.print("\";\n", .{});
+        try stdout.print("\";\n", .{});
     }
-    std.debug.print("}}\n", .{});
+    try stdout.print("}}\n", .{});
 }
+
